@@ -1,0 +1,17 @@
+bleak==3.0.2
+certifi==2026.4.22
+charset-normalizer==3.4.7
+idna==3.15
+python-dotenv==1.2.2
+requests==2.34.2
+typing_extensions==4.15.0
+urllib3==2.7.0
+winrt-runtime==3.2.1
+winrt-Windows.Devices.Bluetooth==3.2.1
+winrt-Windows.Devices.Bluetooth.Advertisement==3.2.1
+winrt-Windows.Devices.Bluetooth.GenericAttributeProfile==3.2.1
+winrt-Windows.Devices.Enumeration==3.2.1
+winrt-Windows.Devices.Radios==3.2.1
+winrt-Windows.Foundation==3.2.1
+winrt-Windows.Foundation.Collections==3.2.1
+winrt-Windows.Storage.Streams==3.2.1
