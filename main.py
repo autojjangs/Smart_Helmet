@@ -1,5 +1,6 @@
 import asyncio
 from services import ble_service
+from services import tmap_service
 
 
 
@@ -9,7 +10,11 @@ async def main():
     global is_vibrating, last_vibrated_index
         
     print("=== 스마트 헬멧 시스템 가동 ===")
-        
+    
+    # TMAP 경로 탐색 및 파싱 (최초 1회)
+    tmap_service.init_route()
+    tmap_service.print_all_guide_points()
+    
     while True:
         try:
             
@@ -21,7 +26,15 @@ async def main():
             #[추후 구현] distance, turn_type, current_index = await tmap_service.get_current_info()
             
             #테스트를 위해 임시로 값 설정. 나중에 지울것
-            distance=100; turn_type=13; current_index=9
+            # distance=100; turn_type=13; current_index=9
+            distance, turn_type, current_index = tmap_service.get_current_info()
+
+            # 목적지 도착 체크
+            if current_index == -1:
+                print("[EVENT] 목적지 도착! 경로 안내를 종료합니다.")
+                await ble_service.stop_vibration("left")
+                await ble_service.stop_vibration("right")
+                break
 
             #신호 시작
             if distance <= 100 and not is_vibrating:
