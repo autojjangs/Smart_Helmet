@@ -134,11 +134,20 @@ def parse_route(raw_json):
     }
 
 
+import os
+import json
+
 def save_raw_json(raw_json, filename="tmap_response.json"):
-    """디버깅용: 원본 응답을 파일로 저장한다."""
-    with open(filename, "w", encoding="utf-8") as f:
+    """디버깅용: 원본 응답을 response 디렉터리 안에 파일로 저장한다."""
+    target_dir = "response" # 디렉터리명 지정
+    os.makedirs(target_dir, exist_ok=True) # response 폴더가 없으면 새로 생성 (이미 있으면 무시)
+    file_path = os.path.join(target_dir, filename) # 폴더 경로와 파일 이름을 합쳐서 최종 경로 생성
+    
+    # 지정한 경로로 파일 저장
+    with open(file_path, "w", encoding="utf-8") as f:
         json.dump(raw_json, f, ensure_ascii=False, indent=2)
-    print(f"[TMAP] 원본 응답 저장 완료: {filename}")
+        
+    print(f"[TMAP] 원본 응답 저장 완료: {file_path}")
 
 
 # ===== main.py에서 호출할 인터페이스 =====
