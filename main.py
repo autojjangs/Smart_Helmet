@@ -59,10 +59,14 @@ async def main():
                 await ble_service.stop_vibration("right")
                 # LED 소등 신호
 
+            
                 
                 is_vibrating = False
-            # 데이터 갱신 주기 (1초)
-            await asyncio.sleep(1)
+            # [프로토타입] Enter 입력 시 다음 안내 지점으로 이동
+            summary = tmap_service.get_route_summary()
+            input(f"\n[대기] Enter를 누르면 다음 지점으로 이동 "
+                  f"(현재: {summary['current_index']}/{summary['total_points']-1}) >>> ")
+            tmap_service.advance_to_next()
 
         except Exception as e:
             print(f"오류 발생: {e}")
