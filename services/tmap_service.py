@@ -16,13 +16,13 @@ if not API_KEY:
     raise RuntimeError("TMAP_API_KEY가 .env 파일에 설정되어 있지 않습니다.")
 
 # 출발지 (프로토타입: 직접 입력 / 실제: GPS 값)
-START_X = 126.838571   # 경도 (longitude)
-START_Y = 37.296417    # 위도 (latitude)
+START_X = 126.838571   # 클터 후문 경도 (longitude)
+START_Y = 37.296417    # 클터 후문 위도 (latitude)
 START_NAME = "출발지"
 
 # 목적지
-END_X = 126.834136     # 경도 (longitude)
-END_Y = 37.296161      # 위도 (latitude)
+END_X = 126.834136     # 체육관 오른편 도로 경도 (longitude)
+END_Y = 37.296161      # 체육관 오른편 도로 위도 (latitude)
 END_NAME = "도착지"
 # ================================
 
