@@ -7,8 +7,9 @@ import time
 
 
 DEVICE_NAME = "SmartHelmet-Vibe"
-SERVICE_UUID = bluetooth.UUID("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
-COMMAND_CHARACTERISTIC_UUID = bluetooth.UUID("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
+SERVICE_UUID = bluetooth.UUID("")
+COMMAND_CHARACTERISTIC_UUID = bluetooth.UUID("")
+#송신파트의 UUID와 일치시킬 것, 현재는 비워뒀습니다.
 
 # 진동 모듈 IN 핀에 연결한 실제 ESP32-C3 GPIO 번호로 수정 필요, 현재는 None으로 설정되어 있습니다.
 VIBE_IN_PIN = None
