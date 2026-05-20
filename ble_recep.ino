@@ -4,10 +4,10 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-// 라즈베리파이의 ble_service.py에서도 같은 UUID를 사용해야 합니다.
+// 송신파트와 동일한 UUID사용할것, 현재는 비워뒀습니다.
 static const char* DEVICE_NAME = "SmartHelmet-Vibe";
-static const char* SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-static const char* COMMAND_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+static const char* SERVICE_UUID = "";
+static const char* COMMAND_CHARACTERISTIC_UUID = "";
 
 // EM-MA-126 진동모듈의 IN 핀에 연결된 ESP32-C3 GPIO 번호입니다.
 // 현재 배선: GPIO n -> IN, 5V/VBUS -> VCC, GND -> GND
