@@ -17,9 +17,9 @@ VIBE_IN_PIN = None
 ON_COMMAND = "1"
 OFF_COMMAND = "0"
 # BLE 이벤트 상수/BLE에서 발생하는 이벤트를 구분하기 위한 값입니다.
-_IRQ_CENTRAL_CONNECT = const(1)
-_IRQ_CENTRAL_DISCONNECT = const(2)
-_IRQ_GATTS_WRITE = const(3)
+_IRQ_CENTRAL_CONNECT = const(1) #BLE연결이 성공하면 발생하는 이벤트입니다.
+_IRQ_CENTRAL_DISCONNECT = const(2) #BLE연결이 끊기면 발생하는 이벤트입니다. 통신이 끊기면 진동이 꺼집니다.
+_IRQ_GATTS_WRITE = const(3) #라즈베리파이가 "1" 또는 "0"을 보내면 이 이벤트가 발생하고, 코드가 그 값을 읽어서 진동을 켜거나 끕니다.
 # BLE 광고 데이터 유형 상수
 _ADV_TYPE_FLAGS = const(0x01)
 _ADV_TYPE_NAME = const(0x09)
@@ -84,7 +84,7 @@ class VibrationBleReceiver:
         print("=== SmartHelmet ESP32-C3 진동 BLE 수신기 ===")
         print("[BLE] 장치 이름:", DEVICE_NAME)
         print("[BLE] 연결 대기 중...")
-    # 진동 제어 메서드
+    # 진동 켜기 메서드
     def start_vibration(self):
         self._vibe.value(1)
         print("[진동] 켜짐")
