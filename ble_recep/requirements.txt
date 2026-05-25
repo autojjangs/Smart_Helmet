@@ -1,0 +1,10 @@
+## requirements.txt
+
+본 프로젝트에서 사용한 `micropython`, `bluetooth`, `struct` 모듈은 일반적인 Python 패키지처럼 `pip install`을 통해 설치하는 외부 라이브러리가 아닙니다.
+
+해당 프로젝트는 ESP32-C3 보드에서 MicroPython 환경으로 실행되는 것을 기준으로 작성되었습니다. 따라서 `micropython`과 `bluetooth` 모듈은 MicroPython 펌웨어 내부에 기본적으로 포함되어 있는 내장 모듈이며, 
+별도로 `requirements.txt`에 기록하거나 설치할 필요가 없습니다.
+
+또한 `struct` 모듈은 Python 및 MicroPython에서 제공하는 기본 내장 모듈로, 바이너리 데이터 변환 등에 사용되지만 외부 패키지가 아니기 때문에 `requirements.txt`에 포함하지 않았습니다.
+
+따라서 본 프로젝트의 `requirements.txt`는 공백입니다.
