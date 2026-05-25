@@ -1,7 +1,6 @@
 import asyncio
-from services import ble_service
+from services import ble_service, led_service
 from services import tmap_service
-
 
 
 is_vibrating=False
@@ -34,16 +33,17 @@ async def main():
                 print("[EVENT] 목적지 도착! 경로 안내를 종료합니다.")
                 await ble_service.stop_vibration("left")
                 await ble_service.stop_vibration("right")
+                led_service.stop_led()
                 break
 
             #신호 시작
-            if distance <= 100 and not is_vibrating:
+            if distance <= 50 and not is_vibrating:
                 if current_index != last_vibrated_index:
                     direction = "left" if turn_type == 12 else "right"
                     print(f"[EVENT] {distance}m 전방 {direction} turn - 진동 시작")
                     
                     await ble_service.start_vibration(direction)
-                    #여기에 LED Strip 점등 신호                  
+                    led_service.start_led_blink(direction)               
 
                     is_vibrating = True
                     #회전을 하기 전까지 index는 바뀌지 않음. 따라서 중복신호 방지 가능
@@ -57,7 +57,7 @@ async def main():
                 # 양쪽 장갑에 모두 정지 신호를 보냄
                 await ble_service.stop_vibration("left")
                 await ble_service.stop_vibration("right")
-                # LED 소등 신호
+                led_service.stop_led()
 
             
                 
