@@ -26,7 +26,7 @@ def search_poi(keyword):
     키워드로 장소를 검색하여 후보 목록을 반환한다.
 
     Args:
-        keyword (str): 검색어 (예: "강남역")
+        keyword (str): 검색어 (예: "행복관")
 
     Returns:
         list[dict]: 최대 5개의 장소 후보. 각 항목:
