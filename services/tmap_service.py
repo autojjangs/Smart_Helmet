@@ -20,11 +20,35 @@ START_X = 126.838571   # 클터 후문 경도 (longitude)
 START_Y = 37.296417    # 클터 후문 위도 (latitude)
 START_NAME = "출발지"
 
-# 목적지
-END_X = 126.834136     # 체육관 오른편 도로 경도 (longitude)
-END_Y = 37.296161      # 체육관 오른편 도로 위도 (latitude)
+# 목적지 (app.py 웹서버에서 검색·확정하여 destination.json에 저장한 값을 읽어옴)
+END_X = None     # 초기값은 None, load_destination()으로 채워진다.
+END_Y = None     # 초기값은 None, load_destination()으로 채워진다.
 END_NAME = "도착지"
+
+# 웹서버(app.py)가 목적지를 저장하는 파일
+DESTINATION_FILE = "destination.json"
 # ================================
+
+def load_destination():
+    """
+    destination.json에서 목적지 좌표를 읽어 모듈 전역 변수에 설정한다.
+    app.py에서 목적지를 먼저 확정해 두어야 한다.
+    """
+    global END_X, END_Y, END_NAME
+
+    if not os.path.exists(DESTINATION_FILE):
+        raise RuntimeError(
+            f"{DESTINATION_FILE} 파일이 없습니다. "
+            f"먼저 app.py를 실행해 목적지를 검색·설정하세요."
+        )
+
+    with open(DESTINATION_FILE, "r", encoding="utf-8") as f:
+        dest = json.load(f)
+
+    END_X = dest["lon"]
+    END_Y = dest["lat"]
+    END_NAME = dest.get("name", "도착지")
+    print(f"[TMAP] 목적지 로드 완료: {END_NAME} ({END_Y}, {END_X})")
 
 
 # API 엔드포인트
@@ -163,6 +187,7 @@ def init_route():
     main.py의 루프 진입 전에 1회 호출한다.
     """
     global _route_data, _current_idx
+    load_destination()  # destination.json에서 목적지 좌표를 먼저 읽어옴
     print("[TMAP] 경로 탐색 요청 중...")
     raw = request_route()
     save_raw_json(raw)
