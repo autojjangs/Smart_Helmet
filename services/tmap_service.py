@@ -215,9 +215,6 @@ def get_current_info():
             - lat: 현재 목표 안내 지점의 위도
             - turn_type: 회전 코드 (11:직진, 12:좌회전, 13:우회전 등)
             - current_index: 현재 안내 지점 순번
-
-    주의: 프로토타입에서는 GPS 기반 실시간 위치 추적이 없으므로,
-         advance_to_next()를 수동 호출하여 다음 지점으로 넘긴다.
     """
     if _route_data is None:
         raise RuntimeError("init_route()를 먼저 호출하세요.")
