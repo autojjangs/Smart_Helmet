@@ -49,30 +49,29 @@ async def main():
             real_distance = gps_service.calculate_distance(current_lon, current_lat, target_lon, target_lat)
             print(f"[내비게이션] 다음 지점(Index {current_index})까지 남은 거리: {int(real_distance)}m")
 
-            # 신호 시작 (50m 이내 진입 시)
-            if real_distance <= 50 and not is_vibrating:
-                if current_index != last_vibrated_index:
-                    direction = "left" if turn_type == 12 else "right"
-                    print(f"[EVENT] {int(real_distance)}m 전방 {direction} turn - 진동/LED 시작")
-                    
-                    await ble_service.start_vibration(direction)
-                    led_service.start_led_blink(direction)               
-
-                    is_vibrating = True
-                    last_vibrated_index = current_index
-
-            # 지점 통과 판정 (안내 지점 반경 10m 이내로 들어오면 통과한 것으로 간주하고 다음으로 이동)
-            elif real_distance <= 10:
+            # [1] 지점 통과 판정 (반경 10m 이내) - 가장 가까운 조건이 우선
+            if real_distance <= 10:
                 print(f"[EVENT] 안내 지점(Index {current_index}) 통과 - 신호 종료 및 다음 구간 로드")
-                
+ 
                 # 양쪽 장갑에 모두 정지 신호를 보냄
                 await ble_service.stop_vibration("left")
                 await ble_service.stop_vibration("right")
                 led_service.stop_led()
                 is_vibrating = False
-                
-                # 수동(Enter)이 아니라 자동으로 다음 지점으로 이동!
+ 
+                # 자동으로 다음 안내 지점으로 이동
                 tmap_service.advance_to_next()
+ 
+            # [2] 신호 시작 (10m 초과 ~ 50m 이내 진입 시, 이 지점에서 아직 진동을 안 켰을 때만)
+            elif real_distance <= 50 and not is_vibrating and current_index != last_vibrated_index:
+                direction = "left" if turn_type == 12 else "right"
+                print(f"[EVENT] {int(real_distance)}m 전방 {direction} turn - 진동/LED 시작")
+ 
+                await ble_service.start_vibration(direction)
+                led_service.start_led_blink(direction)
+ 
+                is_vibrating = True
+                last_vibrated_index = current_index
 
         except Exception as e:
             print(f"오류 발생: {e}")

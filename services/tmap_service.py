@@ -15,7 +15,7 @@ API_KEY = os.getenv("TMAP_API_KEY")
 if not API_KEY:
     raise RuntimeError("TMAP_API_KEY가 .env 파일에 설정되어 있지 않습니다.")
 
-# 출발지 (프로토타입: 직접 입력 / 실제: GPS 값)
+# 출발지 (프로토타입: 기본값 / 실제: init_route()에 넘어온 GPS 값으로 덮어씀)
 START_X = 126.838571   # 클터 후문 경도 (longitude)
 START_Y = 37.296417    # 클터 후문 위도 (latitude)
 START_NAME = "출발지"
@@ -158,9 +158,6 @@ def parse_route(raw_json):
     }
 
 
-import os
-import json
-
 def save_raw_json(raw_json, filename="tmap_response.json"):
     """디버깅용: 원본 응답을 response 디렉터리 안에 파일로 저장한다."""
     target_dir = "response" # 디렉터리명 지정
@@ -181,12 +178,16 @@ _route_data = None    # parse_route() 결과
 _current_idx = 0      # 현재 진행 중인 안내 지점 인덱스
 
 
-def init_route():
+def init_route(start_lon, start_lat):
     """
     경로 탐색을 실행하고 파싱 결과를 모듈 내부에 보관한다.
     main.py의 루프 진입 전에 1회 호출한다.
     """
-    global _route_data, _current_idx
+    global _route_data, _current_idx, START_X, START_Y
+
+    START_X = start_lon
+    START_Y = start_lat
+
     load_destination()  # destination.json에서 목적지 좌표를 먼저 읽어옴
     print("[TMAP] 경로 탐색 요청 중...")
     raw = request_route()
@@ -202,11 +203,16 @@ def init_route():
 
 def get_current_info():
     """
-    현재 안내 지점의 (distance, turn_type, current_index) 를 반환한다.
+    현재 안내 지점의 (lon, lat, turn_type, current_index) 를 반환한다.
+
+    수정: 기존에는 (next_distance, turn_type, index) 3개를 반환했으나,
+          main.py는 GPS로 실제 거리를 직접 계산하기 위해 '목표 지점 좌표'가 필요하다.
+          따라서 현재 안내 지점의 좌표(lon, lat)를 반환하도록 변경했다.
 
     Returns:
-        tuple: (distance, turn_type, current_index)
-            - distance: 다음 안내 지점까지 남은 거리(m)
+        tuple: (lon, lat, turn_type, current_index)
+            - lon: 현재 목표 안내 지점의 경도
+            - lat: 현재 목표 안내 지점의 위도
             - turn_type: 회전 코드 (11:직진, 12:좌회전, 13:우회전 등)
             - current_index: 현재 안내 지점 순번
 
@@ -218,11 +224,15 @@ def get_current_info():
 
     points = _route_data["guide_points"]
     if _current_idx >= len(points):
-        # 모든 안내 지점 통과 → 목적지 도착
-        return (0, 201, -1)
+        # 모든 안내 지점 통과 → 목적지 도착 (좌표 없음)
+        # 주의: main.py는 이 함수 호출 전에 get_route_summary()로 도착을 먼저 체크하므로
+        #       정상 흐름에서는 이 분기에 도달하지 않는다(안전용 반환).
+        return (None, None, 201, -1)
 
     pt = points[_current_idx]
-    return (pt["next_distance"], pt["turn_type"], _current_idx)
+    lon = pt["coordinates"][0]
+    lat = pt["coordinates"][1]
+    return (lon, lat, pt["turn_type"], _current_idx)
 
 
 def advance_to_next():
