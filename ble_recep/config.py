@@ -11,7 +11,7 @@ SERVICE_UUID = bluetooth.UUID("")
 COMMAND_CHARACTERISTIC_UUID = bluetooth.UUID("")
 
 # 진동 모듈 IN 핀에 연결한 실제 ESP32-C3 GPIO 번호로 수정하세요.
-VIBE_IN_PIN = None
+VIBE_IN_PIN = 10
 
 # Smart_Helmet 프로젝트는 진동 시작/종료 명령으로 1, 0만 전송합니다.
 ON_COMMAND = "1"
