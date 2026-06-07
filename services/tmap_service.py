@@ -157,13 +157,19 @@ _route_data = None    # parse_route() 결과
 _current_idx = 0      # 현재 진행 중인 안내 지점 인덱스
 
 
-def init_route():
+def init_route(gps_lon, gps_lat):
     """
     경로 탐색을 실행하고 파싱 결과를 모듈 내부에 보관한다.
     main.py의 루프 진입 전에 1회 호출한다.
     """
     global _route_data, _current_idx
-    print("[TMAP] 경로 탐색 요청 중...")
+    
+    # 상단에 선언된 전역변수 START_X, START_Y를 불러와 현재 GPS 값으로 덮어씀
+    global START_X, START_Y
+    START_X = gps_lon
+    START_Y = gps_lat
+    
+    print(f"[TMAP] 경로 탐색 요청 중... (출발지 갱신: {START_X}, {START_Y})")
     raw = request_route()
     save_raw_json(raw)
     _route_data = parse_route(raw)
@@ -177,16 +183,14 @@ def init_route():
 
 def get_current_info():
     """
-    현재 안내 지점의 (distance, turn_type, current_index) 를 반환한다.
+    현재 안내 지점의 타겟 좌표와 회전 정보를 반환한다.
 
     Returns:
-        tuple: (distance, turn_type, current_index)
-            - distance: 다음 안내 지점까지 남은 거리(m)
+        tuple: (target_lon, target_lat, turn_type, current_index)
+            - target_lon: 다음 안내 지점의 경도
+            - target_lat: 다음 안내 지점의 위도
             - turn_type: 회전 코드 (11:직진, 12:좌회전, 13:우회전 등)
             - current_index: 현재 안내 지점 순번
-
-    주의: 프로토타입에서는 GPS 기반 실시간 위치 추적이 없으므로,
-         advance_to_next()를 수동 호출하여 다음 지점으로 넘긴다.
     """
     if _route_data is None:
         raise RuntimeError("init_route()를 먼저 호출하세요.")
@@ -194,10 +198,16 @@ def get_current_info():
     points = _route_data["guide_points"]
     if _current_idx >= len(points):
         # 모든 안내 지점 통과 → 목적지 도착
-        return (0, 201, -1)
+        # main.py에서 4개의 값을 받으므로(Unpacking), 오류가 나지 않게 0.0을 채워줍니다.
+        return (0.0, 0.0, 201, -1)
 
     pt = points[_current_idx]
-    return (pt["next_distance"], pt["turn_type"], _current_idx)
+    
+    # pt["coordinates"] 리스트에서 경도([0])와 위도([1])를 뽑아냅니다.
+    target_lon = pt["coordinates"][0]
+    target_lat = pt["coordinates"][1]
+    
+    return (target_lon, target_lat, pt["turn_type"], _current_idx)
 
 
 def advance_to_next():
