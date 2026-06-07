@@ -6,12 +6,12 @@
 
 // 송신파트와 동일한 UUID사용할것, 현재는 비워뒀습니다.
 static const char* DEVICE_NAME = "SmartHelmet-Vibe";
-static const char* SERVICE_UUID = "";
-static const char* COMMAND_CHARACTERISTIC_UUID = "";
+static const char* SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+static const char* COMMAND_CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
 // EM-MA-126 진동모듈의 IN 핀에 연결된 ESP32-C3 GPIO 번호입니다.
 // 현재 배선: GPIO n -> IN, 5V/VBUS -> VCC, GND -> GND
-static const uint8_t VIBE_IN_PIN = n;
+static const uint8_t VIBE_IN_PIN = 10;
 
 static BLEAdvertising* bleWait = nullptr;
 static bool connected = false;
