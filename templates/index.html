@@ -8,6 +8,7 @@
     body { font-family: -apple-system, sans-serif; margin: 0; padding: 20px;
            background: #f4f6f8; color: #1a1a1a; }
     h1 { font-size: 20px; margin: 0 0 16px; }
+    h2 { font-size: 14px; color: #6b7280; margin: 18px 0 8px; }
     .row { display: flex; gap: 8px; margin-bottom: 14px; }
     input { flex: 1; padding: 12px; font-size: 16px; border: 1px solid #cdd3da;
             border-radius: 10px; }
@@ -27,10 +28,22 @@
     .dot { display:inline-block; width:9px; height:9px; border-radius:50%;
            background:#bbb; margin-right:6px; vertical-align:middle; }
     .dot.on { background:#10b981; }
+    .label { font-size: 12px; color: #888; }
+    .coord { font-family: monospace; font-size: 20px; font-weight: 700; }
+    .gps { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .gps.wait { color:#888; } .gps.ok { color:#157a15; } .gps.stale { color:#b35900; }
+    .turn { font-size: 30px; font-weight: 800; }
+    .turn .dist { color:#2563eb; }
+    .meta { font-size: 13px; color:#374151; margin-top:6px; }
+    .meta b { color:#111; }
+    a.map { display:block; text-align:center; padding:12px; background:#2563eb;
+            color:#fff; border-radius:10px; text-decoration:none; font-weight:700;
+            margin-top:8px; }
+    a.map.off { background:#bbb; pointer-events:none; }
   </style>
 </head>
 <body>
-  <h1>🪖 스마트 헬멧 — 목적지 설정</h1>
+  <h1>🪖 스마트 헬멧</h1>
 
   <div id="msg" class="msg"></div>
 
@@ -38,13 +51,29 @@
     <input id="kw" placeholder="장소 검색 (예: 행복관)" autocomplete="off">
     <button id="btnSearch" onclick="doSearch()">검색</button>
   </div>
-
   <div id="results"></div>
 
+  <h2>주행 상태</h2>
   <div class="card">
     <span id="dot" class="dot"></span>
     <span id="navState">내비게이션 대기 중</span>
-    <div class="status" id="routeState"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">현재 위치 (GPS)</div>
+    <div id="gpsState" class="gps wait">신호 대기 중...</div>
+    <div class="coord">위도 <span id="lat">-</span></div>
+    <div class="coord">경도 <span id="lon">-</span></div>
+    <a id="maplink" class="map off" target="_blank">지도에서 위치 보기</a>
+  </div>
+
+  <div class="card">
+    <div class="label">다음 회전</div>
+    <div class="turn"><span id="nextTurn">-</span> <span class="dist" id="distNext"></span></div>
+    <div class="status" id="nextDesc"></div>
+    <div class="meta">남은 회전 <b id="remTurns">-</b>회 ·
+      남은 안내지점 <b id="remPts">-</b> ·
+      총거리 <b id="totDist">-</b>m</div>
   </div>
 
 <script>
@@ -59,20 +88,17 @@ async function doSearch() {
   const box = document.getElementById('results');
   box.innerHTML = '';
   if (!kw) { showMsg('검색어를 입력하세요.', false); return; }
-
   try {
     const res = await fetch('/search?keyword=' + encodeURIComponent(kw));
     const data = await res.json();
     if (data.error) { showMsg(data.error, false); return; }
     if (!data.results.length) { showMsg('검색 결과가 없습니다.', false); return; }
     document.getElementById('msg').className = 'msg';
-
     data.results.forEach(function(r) {
       const div = document.createElement('div');
       div.className = 'card';
-      div.innerHTML =
-        '<div class="name">' + r.name + '</div>' +
-        '<div class="addr">' + (r.address || '') + '</div>';
+      div.innerHTML = '<div class="name">' + r.name + '</div>' +
+                      '<div class="addr">' + (r.address || '') + '</div>';
       const b = document.createElement('button');
       b.className = 'pick';
       b.textContent = '여기로 설정 (내비 시작)';
@@ -108,21 +134,53 @@ async function poll() {
   try {
     const res = await fetch('/status');
     const d = await res.json();
+
+    // navigation running state
     document.getElementById('dot').className = 'dot' + (d.nav_running ? ' on' : '');
     document.getElementById('navState').textContent =
       d.nav_running ? '내비게이션 실행 중' : '내비게이션 대기 중';
 
-    const route = d.navigation && d.navigation.route;
-    if (route) {
-      document.getElementById('routeState').textContent =
-        '안내 지점 ' + route.current_index + ' / ' + route.total_points +
-        ' · 총 거리 ' + route.total_distance + 'm';
+    // GPS coordinates
+    const g = d.gps || {};
+    const gpsEl = document.getElementById('gpsState');
+    const mapEl = document.getElementById('maplink');
+    if (g.has_fix) {
+      document.getElementById('lat').textContent = g.lat.toFixed(6);
+      document.getElementById('lon').textContent = g.lon.toFixed(6);
+      const age = g.age_seconds;
+      if (age !== null && age < 5) {
+        gpsEl.className = 'gps ok';
+        gpsEl.textContent = '수신 중 (' + age.toFixed(1) + '초 전)';
+      } else {
+        gpsEl.className = 'gps stale';
+        gpsEl.textContent = '신호 끊김? (' + (age === null ? '-' : age.toFixed(0)) + '초 전)';
+      }
+      mapEl.className = 'map';
+      mapEl.href = 'https://www.google.com/maps?q=' + g.lat + ',' + g.lon;
     } else {
-      document.getElementById('routeState').textContent = '';
+      document.getElementById('lat').textContent = '-';
+      document.getElementById('lon').textContent = '-';
+      gpsEl.className = 'gps wait';
+      gpsEl.textContent = '신호 대기 중...';
+      mapEl.className = 'map off';
     }
-  } catch (e) { /* 무시 */ }
+
+    // remaining route guidance
+    const nav = d.navigation || {};
+    const live = nav.live || {};
+    const route = nav.route;
+    document.getElementById('nextTurn').textContent = live.next_turn || '-';
+    document.getElementById('distNext').textContent =
+      (live.distance_to_next != null) ? (live.distance_to_next + 'm 앞') : '';
+    document.getElementById('nextDesc').textContent = live.next_desc || '';
+    document.getElementById('remTurns').textContent =
+      (live.remaining_turns != null) ? live.remaining_turns : '-';
+    document.getElementById('remPts').textContent =
+      (live.remaining_points != null) ? live.remaining_points : '-';
+    document.getElementById('totDist').textContent = route ? route.total_distance : '-';
+  } catch (e) { /* ignore */ }
 }
-setInterval(poll, 1500);
+setInterval(poll, 1000);
 poll();
 </script>
 </body>

@@ -82,10 +82,11 @@ async def _write(direction, action):
 
     client = await _ensure_connected(direction)
     if client is None:
-        return
+        return False
 
     try:
         await client.write_gatt_char(config.CHARACTERISTIC_UUID, bytearray(action, "utf-8"))
+        return True
     except Exception as e:
         print(f"[BLE Error] {direction} 쓰기 실패 — 재연결 후 재시도: {e}")
         _clients[direction] = None
@@ -93,8 +94,11 @@ async def _write(direction, action):
         if client is not None:
             try:
                 await client.write_gatt_char(config.CHARACTERISTIC_UUID, bytearray(action, "utf-8"))
+                return True
+            
             except Exception as e2:
                 print(f"[BLE Error] {direction} 재시도 실패: {e2}")
+        return FalseS
 
 
 # 신호 시작
