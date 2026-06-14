@@ -13,6 +13,7 @@ helmet_app.py의 내비 스레드에서 호출할 수 있게 한 것이다.
 
 import os
 import asyncio
+import time
 
 from services import tmap_service, gps_service, led_service, ble_service
 
@@ -99,6 +100,85 @@ async def run(stop_event):
         ble_service.set_simulation(True)
         start_lon, start_lat = tmap_service.START_X, tmap_service.START_Y
         print(f"[NAV] 테스트 출발지(고정): ({start_lat}, {start_lon})")
+    elif mode == 3:
+        print("=== [NAV] 시연 모드 (Mode 3) 영상 동기화 준비 ===")
+        # 하드웨어 실제 사용
+        led_service.init(simulation=False)
+        ble_service.set_simulation(False)
+        await ble_service.connect_all()
+        print("[NAV] 시연 모드 하드웨어 연결 완료.")
+
+        # 시작 신호 대기 (사용자가 마음의 준비를 할 시간 2초)
+        print(">>> [시연] 1초 뒤 초기 신호(양쪽 0.6초 켜짐)가 울립니다. 영상 틀 준비! <<<")
+        await asyncio.sleep(1)
+
+        # 시작 신호 (양쪽 동시 ON)
+        print("[시연] 초기 신호 ON (영상을 틀 준비를 하세요!)")
+        await ble_service.start_vibration("left")
+        await ble_service.start_vibration("right")
+        led_service.start_led_blink("right")
+        
+        await asyncio.sleep(0.6)
+
+        # 시작 신호 OFF -> 이때 영상을 딱 재생!
+        print("[시연] 초기 신호 OFF. ===== 이 메시지를 보면 영상 재생 시작! =====")
+        await ble_service.stop_vibration("left")
+        await ble_service.stop_vibration("right")
+        led_service.stop_led()
+
+        # 시연 스케줄 (초 단위, "명령", "방향")
+        # 1분 = 60초 로 계산하여 넣었습니다.
+        demo_schedule = [
+            (9, "on", "right"),   # 13초 우회전의 50m 전
+            (15, "off", "right"), # 10m 전 통과
+            (34, "on", "left"),   # 40초 좌회전의 50m 전
+            (41, "off", "left"),  # 10m 전 통과
+            (49, "on", "right"),  # 53초 우회전의 50m 전
+            (55, "off", "right"), # 10m 전 통과
+            (67, "on", "left"),   # 1분 11초 좌회전의 50m 전 (1분 7초)
+            (73, "off", "left"),  # 10m 전 통과 (1분 10초)
+            (74, "on", "right"),  # 1분 18초 우회전의 50m 전 (1분 14초)
+            (80, "off", "right"), # 10m 전 통과 (1분 17초)
+            (82, "end", "none")   # 영상(1분 20초) 종료 직후 시연 종료
+        ]
+
+        # 타이머 시작!
+        start_time = time.time()
+        event_idx = 0
+
+        try:
+            # 스케줄을 전부 소화하거나 정지(웹에서 중단) 버튼을 누를 때까지 루프
+            while not stop_event.is_set() and event_idx < len(demo_schedule):
+                current_time = time.time() - start_time
+                scheduled_time, action, direction = demo_schedule[event_idx]
+
+                # 예정된 시간이 되면 해당 동작 수행
+                if current_time >= scheduled_time:
+                    if action == "on":
+                        print(f"[{current_time:.1f}초] {direction} 방향 50m 전 신호 ON")
+                        await ble_service.start_vibration(direction)
+                        led_service.start_led_blink(direction)
+                    
+                    elif action == "off":
+                        print(f"[{current_time:.1f}초] {direction} 방향 10m 전 신호 OFF")
+                        await ble_service.stop_vibration(direction)
+                        led_service.stop_led()
+                        
+                    elif action == "end":
+                        print(f"[{current_time:.1f}초] 시연용 타임라인 종료!")
+                        break
+                    
+                    # 다음 이벤트로 넘어가기
+                    event_idx += 1
+
+                # CPU 과부하 방지용 짧은 휴식 (0.05초마다 시간 체크)
+                await asyncio.sleep(0.05)
+                
+        except Exception as e:
+            print(f"[NAV] 시연 중단 오류: {e}")
+
+        return
+
     else:
         led_service.init(simulation=False)
         ble_service.set_simulation(False)
