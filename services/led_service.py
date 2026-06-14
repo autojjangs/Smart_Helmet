@@ -39,7 +39,9 @@ RIGHT_OFFSET = 0            # 왼쪽 장갑 = 0..9
 LEFT_OFFSET = RIGHT_COUNT  # 오른쪽 장갑 = 10..19
 
 # 각 장갑 16구 중 가운데 6구만 점등(전력 절약)
-BLINK_SPAN = range(3, 7)
+# BLINK_SPAN = range(3, 7)
+RIGHT = [0,1,2]
+LEFT = [17,18,19]
 
 # === 내부 상태 (lazy init) ===
 _sim = False
@@ -84,8 +86,8 @@ def _ensure_initialized():
 
 def _blink_indices(direction):
     """방향에 해당하는 점등 인덱스 목록(전체 32구 기준)."""
-    base = LEFT_OFFSET if direction == "left" else RIGHT_OFFSET
-    return [base + i for i in BLINK_SPAN]
+    # base = LEFT_OFFSET if direction == "left" else RIGHT_OFFSET
+    return LEFT if direction == "left" else RIGHT
 
 
 def _safe_show():

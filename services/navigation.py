@@ -8,12 +8,7 @@ helmet_app.py의 내비 스레드에서 호출할 수 있게 한 것이다.
   0 = 실제 모드 : GPS 수신 + 실제 LED/BLE (root 필요)
   1 = 파싱 전용 : 고정 출발지로 경로만 파싱·출력 후 종료 (실내/비-root 가능)
   2 = 이동 시뮬 : 가상 위치를 경로 안내 지점 따라 정해진 속도로 전진시켜
-                  50m 진동 / 10m 통과 로직까지 검증 (LED/BLE 시뮬, 하드웨어 미사용)
-
-[모드 2 이동 방식]
-  - 가상 위치를 출발지에서 시작해, '현재 목표 안내 지점' 쪽으로 매 루프 SIM_STEP_M(m)만큼 전진.
-  - 인접한 두 안내 지점 사이는 직선 보간으로 이동(굽은 실제 보행로는 추적하지 않음).
-  - 한 지점을 통과(10m 이내)하면 다음 지점으로 목표가 바뀌고, 가상 위치도 그쪽으로 방향을 전환.
+                  50m 진동 / 10m 통과 로직까지 검증
 """
 
 import os
@@ -48,7 +43,6 @@ class _SimPosition:
     def update_toward(self, target_lon, target_lat):
         d = gps_service.calculate_distance(self.lon, self.lat, target_lon, target_lat)
         if d <= self.step_m or d == 0:
-            # 한 걸음 이내면 목표에 스냅(통과 판정이 잡히도록)
             self.lon, self.lat = target_lon, target_lat
         else:
             f = self.step_m / d
@@ -59,11 +53,27 @@ class _SimPosition:
         return self.lon, self.lat
 
 
+# Live navigation info exposed to the web /status (updated every loop)
+_live = {
+    "distance_to_next": None,   # meters to the current target guide point
+    "next_turn": None,          # turn label, e.g. "좌회전"
+    "next_desc": None,          # guidance description text
+    "remaining_turns": None,    # number of remaining turn maneuvers
+    "remaining_points": None,   # number of remaining guide points
+}
+
+
+def _reset_live():
+    for k in _live:
+        _live[k] = None
+
+
 def status():
-    """helmet_app.py /status 용 요약."""
+    """helmet_app.py /status 용 요약 (경로 요약 + 실시간 안내 정보)."""
     return {
         "mode": _read_mode(),
         "route": tmap_service.get_route_summary(),
+        "live": dict(_live),
     }
 
 
@@ -73,19 +83,19 @@ async def run(stop_event):
 
     Args:
         stop_event (threading.Event): 외부(웹서버)에서 정지를 요청하면 set() 된다.
-                                      루프/대기 중 주기적으로 확인하여 안전하게 종료한다.
     """
     mode = _read_mode()
     step_m = _read_step()
 
     print(f"=== [NAV] 내비게이션 시작 (mode={mode}) ===")
 
+    _reset_live()  # 새 주행 시작 시 실시간 정보 초기화
+
     is_vibrating = False
     last_vibrated_index = -1
 
     # 1) 모드별 하드웨어/출발지 준비
     if mode in (1, 2):
-        # 테스트: 실제 하드웨어를 건드리지 않음 (LED/BLE 시뮬, GPS 미수신)
         led_service.init(simulation=False)
         ble_service.set_simulation(True)
         start_lon, start_lat = tmap_service.START_X, tmap_service.START_Y
@@ -170,7 +180,6 @@ async def run(stop_event):
         return
 
     else:
-        # 실제: LED PWM/BLE 초기화 (root 필요) + GPS 백그라운드 수신
         led_service.init(simulation=False)
         ble_service.set_simulation(False)
         asyncio.create_task(gps_service.gps_loop())
@@ -185,7 +194,7 @@ async def run(stop_event):
             await asyncio.sleep(1)
         print(f"[NAV] 현재 위치 확인 완료! (경도: {start_lon}, 위도: {start_lat})")
 
-    # 2) 경로 탐색(파싱) - 출발지를 넘겨서 1회 호출
+    # 2) 경로 탐색(파싱)
     tmap_service.init_route(start_lon, start_lat)
     tmap_service.print_all_guide_points()
 
@@ -194,7 +203,7 @@ async def run(stop_event):
         print("[NAV] (모드 1) 파싱 전용 - 안내 지점 출력 완료, 내비 루프는 실행하지 않고 종료합니다.")
         return
 
-    # 3) BLE 연결 1회 수립(이후 재사용). 시뮬 모드면 내부에서 연결 생략.
+    # 3) BLE 연결 1회 수립
     await ble_service.connect_all()
 
     sim = _SimPosition(start_lon, start_lat, step_m) if mode == 2 else None
@@ -207,7 +216,6 @@ async def run(stop_event):
 
                 # 4-1) 현재 위치 갱신
                 if mode == 2:
-                    # 가상 위치를 현재 목표 지점 쪽으로 전진시킨 뒤 읽음
                     ti = tmap_service.get_current_info()
                     if ti[0] is not None:
                         sim.update_toward(ti[0], ti[1])
@@ -222,18 +230,32 @@ async def run(stop_event):
                     await ble_service.stop_vibration("left")
                     await ble_service.stop_vibration("right")
                     led_service.stop_led()
+                    # 도착 상태를 웹에 반영
+                    _live["distance_to_next"] = 0
+                    _live["next_turn"] = "도착"
+                    _live["next_desc"] = "목적지 도착"
+                    _live["remaining_turns"] = 0
+                    _live["remaining_points"] = 0
                     break
 
                 # 4-3) 현재 목표 안내 지점 정보
                 target_lon, target_lat, turn_type, current_index = tmap_service.get_current_info()
 
-                # 4-4) 실제(또는 가상) 위치 → 목표 지점까지 남은 거리(m)
+                # 4-4) 위치 → 목표 지점까지 남은 거리(m)
                 real_distance = gps_service.calculate_distance(
                     current_lon, current_lat, target_lon, target_lat
                 )
                 print(f"[내비게이션] 다음 지점(Index {current_index})까지 남은 거리: {int(real_distance)}m")
 
-                # [1] 지점 통과 판정 (반경 10m 이내) - 가장 가까운 조건이 우선
+                # update live info for the web page
+                guide = tmap_service.get_current_guide()
+                _live["distance_to_next"] = int(real_distance)
+                _live["next_turn"] = tmap_service.get_turn_label(turn_type)
+                _live["next_desc"] = guide["description"] if guide else ""
+                _live["remaining_turns"] = tmap_service.count_remaining_turns()
+                _live["remaining_points"] = max(0, summary["total_points"] - current_index)
+
+                # [1] 지점 통과 판정 (반경 10m 이내)
                 if real_distance <= 10:
                     print(f"[EVENT] 안내 지점(Index {current_index}) 통과 - 신호 종료 및 다음 구간 로드")
                     await ble_service.stop_vibration("left")
@@ -242,7 +264,7 @@ async def run(stop_event):
                     is_vibrating = False
                     tmap_service.advance_to_next()
 
-                # [2] 신호 시작 (10m 초과 ~ 50m 이내, 이 지점에서 아직 진동을 안 켰을 때만)
+                # [2] 신호 시작 (10m 초과 ~ 50m 이내)
                 elif real_distance <= 50 and not is_vibrating and current_index != last_vibrated_index:
                     direction = "left" if turn_type == 12 else "right"
                     print(f"[EVENT] {int(real_distance)}m 전방 {direction} turn - 진동/LED 시작")
@@ -259,9 +281,8 @@ async def run(stop_event):
             print("[NAV] 정지 요청 - 내비 루프 종료")
 
     finally:
-        # 5) 정리: LED 끄고 BLE 해제
         led_service.stop_led()
-        # LED blink 태스크 취소가 처리될 시간을 잠깐 양보
         await asyncio.sleep(0)
         await ble_service.disconnect_all()
+        _reset_live()
         print("[NAV] 정리 완료")
