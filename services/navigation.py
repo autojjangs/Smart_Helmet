@@ -108,26 +108,33 @@ async def run(stop_event):
         await ble_service.connect_all()
         print("[NAV] 시연 모드 하드웨어 연결 완료.")
 
-        # 시작 신호 대기 (사용자가 마음의 준비를 할 시간 2초)
+        # 시작 신호 대기 (사용자가 마음의 준비를 할 시간 1초)
         print(">>> [시연] 1초 뒤 초기 신호(양쪽 0.6초 켜짐)가 울립니다. 영상 틀 준비! <<<")
         await asyncio.sleep(1)
 
         # 시작 신호 (양쪽 동시 ON)
         print("[시연] 초기 신호 ON (영상을 틀 준비를 하세요!)")
-        await ble_service.start_vibration("left")
-        await ble_service.start_vibration("right")
-        led_service.start_led_blink("right")
         
-        await asyncio.sleep(0.6)
+        # 1. 시각적 신호인 LED를 가장 먼저 즉시 켭니다. (이전에 "right"였던 것을 "all"로 수정)
+        led_service.start_led_blink("all")
+        
+        # 2. BLE 통신은 딜레이가 발생해도 전체 타이머를 막지 않도록 백그라운드(Task)로 던집니다.
+        asyncio.create_task(ble_service.start_vibration("left"))
+        asyncio.create_task(ble_service.start_vibration("right"))
+        
+        await asyncio.sleep(0.6) # 이제 어떤 딜레이가 있어도 무조건 칼같이 0.6초만 셉니다.
 
         # 시작 신호 OFF -> 이때 영상을 딱 재생!
         print("[시연] 초기 신호 OFF. ===== 이 메시지를 보면 영상 재생 시작! =====")
-        await ble_service.stop_vibration("left")
-        await ble_service.stop_vibration("right")
+        
+        # 1. 시각적 신호 즉시 OFF
         led_service.stop_led()
+        
+        # 2. 진동 정지 명령도 백그라운드로 던짐
+        asyncio.create_task(ble_service.stop_vibration("left"))
+        asyncio.create_task(ble_service.stop_vibration("right"))
 
         # 시연 스케줄 (초 단위, "명령", "방향")
-        # 1분 = 60초 로 계산하여 넣었습니다.
         demo_schedule = [
             (9, "on", "right"),   # 13초 우회전의 50m 전
             (15, "off", "right"), # 10m 전 통과
@@ -142,36 +149,32 @@ async def run(stop_event):
             (82, "end", "none")   # 영상(1분 20초) 종료 직후 시연 종료
         ]
 
-        # 타이머 시작!
+        # 타이머 시작! (이제 블루투스 지연과 상관없이 정확한 타이밍에 시작됩니다)
         start_time = time.time()
         event_idx = 0
 
         try:
-            # 스케줄을 전부 소화하거나 정지(웹에서 중단) 버튼을 누를 때까지 루프
             while not stop_event.is_set() and event_idx < len(demo_schedule):
                 current_time = time.time() - start_time
                 scheduled_time, action, direction = demo_schedule[event_idx]
 
-                # 예정된 시간이 되면 해당 동작 수행
                 if current_time >= scheduled_time:
                     if action == "on":
                         print(f"[{current_time:.1f}초] {direction} 방향 50m 전 신호 ON")
-                        await ble_service.start_vibration(direction)
                         led_service.start_led_blink(direction)
+                        asyncio.create_task(ble_service.start_vibration(direction)) # BLE 비동기 처리
                     
                     elif action == "off":
                         print(f"[{current_time:.1f}초] {direction} 방향 10m 전 신호 OFF")
-                        await ble_service.stop_vibration(direction)
                         led_service.stop_led()
+                        asyncio.create_task(ble_service.stop_vibration(direction))  # BLE 비동기 처리
                         
                     elif action == "end":
                         print(f"[{current_time:.1f}초] 시연용 타임라인 종료!")
                         break
                     
-                    # 다음 이벤트로 넘어가기
                     event_idx += 1
 
-                # CPU 과부하 방지용 짧은 휴식 (0.05초마다 시간 체크)
                 await asyncio.sleep(0.05)
                 
         except Exception as e:
