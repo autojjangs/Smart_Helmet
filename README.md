@@ -1,4 +1,9 @@
 # PM 운전자를 위한 내비게이션 경로 안내 기반 스마트 헬멧
+#### 야외 실동작 영상 유튜브 바로가기 (이미지 클릭)
+[![스마트 헬멧 데모 영상](https://img.youtube.com/vi/XzSps1ttUIk/maxresdefault.jpg)](https://www.youtube.com/watch?v=XzSps1ttUIk)
+#### 제품 사진
+<img width="49%" alt="스마트 헬멧" src="https://github.com/user-attachments/assets/627cbac9-f878-498c-b46c-8d693f3cb647" />
+<img width="49%" alt="장갑" src="https://github.com/user-attachments/assets/056b710e-0fbb-4d35-bacf-4b281338bd1c" />
 
 > TMAP 내비게이션 경로를 따라 회전 지점에서 헬멧의 방향지시등을 자동으로 켜고,
 > 같은 방향의 장갑에 진동 피드백을 전달하는 **PM(Personal Mobility) 운전자 보조 시스템**
