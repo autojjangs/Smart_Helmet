@@ -98,7 +98,7 @@ async def _write(direction, action):
             
             except Exception as e2:
                 print(f"[BLE Error] {direction} 재시도 실패: {e2}")
-        return FalseS
+        return False
 
 
 # 신호 시작
