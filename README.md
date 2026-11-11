@@ -176,7 +176,7 @@ pip install flask        # 웹 서버용 (필요 시)
 BLE_LEFT_MAC=XX:XX:XX:XX:XX:XX
 BLE_RIGHT_MAC=YY:YY:YY:YY:YY:YY
 # TMAP 앱 키 (services/tmap_service.py · poi_service.py 참고)
-TMAP_APP_KEY=your_tmap_app_key
+TMAP_API_KEY=your_tmap_app_key
 ```
 
 ### 4. 장갑 펌웨어 업로드
